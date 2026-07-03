@@ -227,13 +227,22 @@ const Hero = () => {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img)
     }
 
-    // ── Mouse tracking ────────────────────────────────────────
+    // ── Pointer tracking (mouse + touch, unified) ─────────────
     const mouse     = { x: 0.5, y: 0.5 }
     const prevMouse = { x: 0.5, y: 0.5 }
     let velocity       = 0
-    let smoothVelocity = 0  // tapers gently to zero when mouse stops
+    let smoothVelocity = 0  // tapers gently to zero when pointer stops
     let isInside       = false
-    let lastMoveTime   = 0
+    let lastMoveTime    = 0
+
+    // NOTE: previously the touch handler updated mouse.x/y but never
+    // touched `lastMoveTime`. `isMoving` below is gated entirely on
+    // `lastMoveTime`, so on touch devices it was always stuck at 0 and
+    // the ripple never fired — the reveal effect silently did nothing
+    // on mobile/tablet. Fixed by stamping lastMoveTime on every touch
+    // event (touchstart AND touchmove), and by seeding prevMouse on
+    // touchstart so the very first tap doesn't draw a stray streak
+    // from the center of the canvas to the touch point.
 
     const onMove = (e) => {
       const r = hero.getBoundingClientRect()
@@ -243,18 +252,37 @@ const Hero = () => {
       lastMoveTime = performance.now()
     }
     const onLeave = () => { isInside = false; lastMoveTime = 0 }
-    const onTouch = (e) => {
-      if (e.touches.length > 0) {
-        const r = hero.getBoundingClientRect()
-        mouse.x = (e.touches[0].clientX - r.left) / r.width
-        mouse.y = 1.0 - (e.touches[0].clientY - r.top) / r.height
-        isInside = true
-      }
+
+    const updateTouchPos = (e) => {
+      const r = hero.getBoundingClientRect()
+      const t = e.touches[0]
+      mouse.x = (t.clientX - r.left) / r.width
+      mouse.y = 1.0 - (t.clientY - r.top) / r.height
     }
+    const onTouchStart = (e) => {
+      if (e.touches.length === 0) return
+      updateTouchPos(e)
+      // seed prevMouse so the first frame doesn't ripple from the
+      // canvas center all the way to the touch point
+      prevMouse.x = mouse.x
+      prevMouse.y = mouse.y
+      isInside = true
+      lastMoveTime = performance.now()
+    }
+    const onTouch = (e) => {
+      if (e.touches.length === 0) return
+      updateTouchPos(e)
+      isInside = true
+      lastMoveTime = performance.now()
+    }
+    const onTouchEnd = () => { isInside = false; lastMoveTime = 0 }
+
     hero.addEventListener('mousemove', onMove)
     hero.addEventListener('mouseleave', onLeave)
+    hero.addEventListener('touchstart', onTouchStart, { passive: true })
     hero.addEventListener('touchmove', onTouch, { passive: true })
-    hero.addEventListener('touchend', onLeave)
+    hero.addEventListener('touchend', onTouchEnd)
+    hero.addEventListener('touchcancel', onTouchEnd)
 
     // ── Render helpers ────────────────────────────────────────
     function bindQuad(prog) {
@@ -295,7 +323,7 @@ const Hero = () => {
     function loop() {
       frameId = requestAnimationFrame(loop)
 
-      // Actual mouse velocity — only when genuinely moving
+      // Actual pointer velocity — only when genuinely moving
       const dx = mouse.x - prevMouse.x
       const dy = mouse.y - prevMouse.y
       const isMoving = isInside && (performance.now() - lastMoveTime) < 80
@@ -358,8 +386,10 @@ const Hero = () => {
       ro.disconnect()
       hero.removeEventListener('mousemove', onMove)
       hero.removeEventListener('mouseleave', onLeave)
+      hero.removeEventListener('touchstart', onTouchStart)
       hero.removeEventListener('touchmove', onTouch)
-      hero.removeEventListener('touchend', onLeave)
+      hero.removeEventListener('touchend', onTouchEnd)
+      hero.removeEventListener('touchcancel', onTouchEnd)
       fbos.forEach(({ tex, fbo }) => { gl.deleteTexture(tex); gl.deleteFramebuffer(fbo) })
       gl.deleteTexture(revealTex)
       gl.deleteBuffer(quadBuf)
@@ -653,56 +683,6 @@ const Hero = () => {
           <span className="gforce-val" id="hud-gforce-val">2.4 G</span>
         </motion.div>
 
-        {/* Socials */}
-        {/* <motion.div className="hud-widget w-social w-youtube" variants={widgetVariant(0.45)} initial="hidden" animate="visible" {...tilt}>
-          <div className="social-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="red">
-              <path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/>
-            </svg>
-          </div>
-          <span className="social-name">Sriman Kotaru</span>
-          <div className="social-glow yt-glow" />
-        </motion.div> */}
-
-        {/* <motion.div className="hud-widget w-social w-instagram" variants={widgetVariant(0.5)} initial="hidden" animate="visible" {...tilt}>
-          <div className="social-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24">
-              <defs>
-                <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#f09433"/>
-                  <stop offset="25%" stopColor="#e6683c"/>
-                  <stop offset="50%" stopColor="#dc2743"/>
-                  <stop offset="75%" stopColor="#cc2366"/>
-                  <stop offset="100%" stopColor="#bc1888"/>
-                </linearGradient>
-              </defs>
-              <path fill="url(#ig-grad)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
-            </svg>
-          </div>
-          <span className="social-name">srimankotaru</span>
-          <div className="social-glow ig-glow" />
-        </motion.div>
-
-        <motion.div className="hud-widget w-social w-twitter" variants={widgetVariant(0.55)} initial="hidden" animate="visible" {...tilt}>
-          <div className="social-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="white">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.26 5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-            </svg>
-          </div>
-          <span className="social-name">@srimankotaru</span>
-          <div className="social-glow x-glow" />
-        </motion.div>
-
-        <motion.div className="hud-widget w-social w-facebook" variants={widgetVariant(0.6)} initial="hidden" animate="visible" {...tilt}>
-          <div className="social-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="#1877F2">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-            </svg>
-          </div>
-          <span className="social-name">Sriman Kotaru</span>
-          <div className="social-glow fb-glow" />
-        </motion.div> */}
-
         {/* Inputs */}
         <motion.div className="hud-widget w-inputs" variants={widgetVariant(0.55)} initial="hidden" animate="visible" {...tilt}>
           {[
@@ -732,8 +712,6 @@ const Hero = () => {
 
       {/* ══════════════════════════════════════════
           SECTION 1.5 — TYRE TRACK BANNER
-          Social icons float directly on the bg.
-          All sizing → Hero.css  "TYRE SECTION SOCIALS"
       ══════════════════════════════════════════ */}
       <section className="tyre-section">
         <div className="tyre-overlay" />
