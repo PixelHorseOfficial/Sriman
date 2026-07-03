@@ -96,8 +96,6 @@ const Hero = () => {
     `
 
     // ── Fluid simulation shader ───────────────────────────────
-    // Faithful port of index.tsx fluidUpdateShader
-    // Key fix: use neighbors*2.0-prev (correct wave eq) + viscosity mix
     const FLUID_FS = `
       precision highp float;
       uniform sampler2D uCurr;
@@ -119,13 +117,9 @@ const Hero = () => {
         float top      = texture2D(uCurr, vUv + vec2(0.0,  texel.y)).r;
         float bottom   = texture2D(uCurr, vUv + vec2(0.0, -texel.y)).r;
 
-        // Blur + decay — no wave propagation, cannot self-sustain.
-        // Effect exists ONLY while mouse is moving. When mouse stops,
-        // energy gently diffuses and fades away smoothly on its own.
         float blurred = (current + left + right + top + bottom) * 0.2;
         float wave = blurred * uDecay;
 
-        // Ripple injection along mouse trail
         if(uMouseVelocity > 0.0001){
           float ripple = smoothstep(uRadius, 0.0, distance(vUv, uMouse));
           ripple = pow(ripple, 2.0);
@@ -170,14 +164,8 @@ const Hero = () => {
       void main(){
         float displacement = texture2D(uDisp, vUv).r;
 
-        // Y-flip: WebGL loads textures upside-down vs CSS
         vec2 flipped = vec2(vUv.x, 1.0 - vUv.y);
 
-        // "Cover" fit: crop the image instead of stretching it to
-        // whatever the canvas aspect ratio happens to be (matches
-        // CSS background-size: cover behaviour) — this is what
-        // keeps the reveal image looking correct on tall mobile
-        // screens instead of squashed/stretched.
         vec2 ratio = vec2(
           min(uCanvasAspect / uImageAspect, 1.0),
           min(uImageAspect / uCanvasAspect, 1.0)
@@ -188,11 +176,9 @@ const Hero = () => {
         );
         vec4 revealColor = texture2D(uReveal, revUv);
 
-        // Clear, strong mask from displacement amplitude
         float mask = clamp(displacement * uRevealSize, 0.0, 1.0);
         mask = smoothstep(0.0, uEdgeSoftness, mask);
 
-        // Subtle specular highlight tracing the wave ridges
         vec3  normal     = calcNormal(vUv);
         float normalDev  = length(normal.xy);
         float rippleMask = smoothstep(0.02, 0.12, normalDev);
@@ -210,7 +196,6 @@ const Hero = () => {
     const fluidProg   = makeProgram(VS, FLUID_FS)
     const displayProg = makeProgram(VS, DISPLAY_FS)
 
-    // ── Reveal image texture ──────────────────────────────────
     const revealTex = gl.createTexture()
     gl.bindTexture(gl.TEXTURE_2D, revealTex)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
@@ -231,18 +216,9 @@ const Hero = () => {
     const mouse     = { x: 0.5, y: 0.5 }
     const prevMouse = { x: 0.5, y: 0.5 }
     let velocity       = 0
-    let smoothVelocity = 0  // tapers gently to zero when pointer stops
+    let smoothVelocity = 0
     let isInside       = false
     let lastMoveTime    = 0
-
-    // NOTE: previously the touch handler updated mouse.x/y but never
-    // touched `lastMoveTime`. `isMoving` below is gated entirely on
-    // `lastMoveTime`, so on touch devices it was always stuck at 0 and
-    // the ripple never fired — the reveal effect silently did nothing
-    // on mobile/tablet. Fixed by stamping lastMoveTime on every touch
-    // event (touchstart AND touchmove), and by seeding prevMouse on
-    // touchstart so the very first tap doesn't draw a stray streak
-    // from the center of the canvas to the touch point.
 
     const onMove = (e) => {
       const r = hero.getBoundingClientRect()
@@ -262,8 +238,6 @@ const Hero = () => {
     const onTouchStart = (e) => {
       if (e.touches.length === 0) return
       updateTouchPos(e)
-      // seed prevMouse so the first frame doesn't ripple from the
-      // canvas center all the way to the touch point
       prevMouse.x = mouse.x
       prevMouse.y = mouse.y
       isInside = true
@@ -303,41 +277,32 @@ const Hero = () => {
       gl.uniform2f(gl.getUniformLocation(prog, name), x, y)
     }
 
-    // ── Simulation settings (matching index.tsx defaults) ─────
     const DECAY      = 0.96
-    
-// energy loss per step — gentle fade
-    const RADIUS     = 0.13// ripple injection radius in UV space
-    const INTENSITY  = 0.35   // ripple strength — clear but not noisy
-    // Display settings
-    const DISTORTION    = 0.20 // lens refraction amount
-    const REVEAL_SIZE   = 9.0 // multiplier on displacement for mask size
-    const EDGE_SOFTNESS = 0.42 // smooth mask edge
-    const LIGHT         = 0.0 // specular brightness
-    const SPEC_POWER    = 83.0 // specular tightness
+    const RADIUS     = 0.13
+    const INTENSITY  = 0.35
+    const DISTORTION    = 0.20
+    const REVEAL_SIZE   = 9.0
+    const EDGE_SOFTNESS = 0.42
+    const LIGHT         = 0.0
+    const SPEC_POWER    = 83.0
 
-    // ── Render loop ───────────────────────────────────────────
     let ping = 0
     let frameId
 
     function loop() {
       frameId = requestAnimationFrame(loop)
 
-      // Actual pointer velocity — only when genuinely moving
       const dx = mouse.x - prevMouse.x
       const dy = mouse.y - prevMouse.y
       const isMoving = isInside && (performance.now() - lastMoveTime) < 80
       velocity = isMoving ? Math.sqrt(dx * dx + dy * dy) : 0
 
-      // smoothVelocity: snaps up fast when moving, tapers very slowly to zero
-      // when stopped — this is what makes the stop feel smooth and gentle
       const lerpRate = velocity > smoothVelocity ? 0.3 : 0.000
       smoothVelocity += (velocity - smoothVelocity) * lerpRate
 
       const curr = ping
       const next = 1 - ping
 
-      // ── 1. Fluid simulation step ──────────────────────────
       gl.useProgram(fluidProg)
       bindQuad(fluidProg)
       setTex(fluidProg, 'uCurr', 0, fbos[curr].tex)
@@ -353,7 +318,6 @@ const Hero = () => {
       gl.viewport(0, 0, SIM, SIM)
       gl.drawArrays(gl.TRIANGLES, 0, 6)
 
-      // ── 2. Display / mask pass ────────────────────────────
       gl.useProgram(displayProg)
       bindQuad(displayProg)
       setTex(displayProg, 'uDisp',   0, fbos[next].tex)
@@ -396,12 +360,29 @@ const Hero = () => {
     }
   }, [])
 
-  /* ── Cursor Image Trail ── */
+  /* ── Cursor Image Trail ──────────────────────────────────────
+     Fixed version: previously each mousemove could append an <img>
+     whose src (trail1-4.jpg) failed to resolve, which Chrome/Edge
+     render as a small "broken image" glyph inside a visible box —
+     that's the wall of black squares with white outlines in the
+     bug screenshot. On top of that, if GSAP's onComplete ever got
+     interrupted (fast movement, re-renders, route changes) the
+     element never got removed, so they piled up instead of fading.
+
+     Fix:
+       1. Use a CSS background-image on the div instead of an <img>
+          child — a 404 just stays blank, no broken-image glyph.
+       2. Track every live element in a ref array and hard-cap the
+          count (MAX_TRAIL) — once we hit the cap we immediately
+          kill + remove the oldest one instead of letting it queue.
+       3. On unmount, kill every in-flight tween and remove every
+          leftover element so nothing can ever survive past this
+          effect's lifetime.
+  ── */
   useEffect(() => {
     const hero = heroRef.current
     if (!hero) return
 
-    // Replace these paths with your actual trail images
     const images = [
       '/images/trail1.jpg',
       '/images/trail2.jpg',
@@ -411,9 +392,61 @@ const Hero = () => {
     const IMAGE_WIDTH  = 150
     const IMAGE_HEIGHT = 130
     const MIN_DISTANCE = 150
+    const MAX_TRAIL    = 6 // hard cap on simultaneous trail elements
 
     let lastPosition = null
     let imageIndex   = 0
+    const activeEls  = [] // { el, tween } for every element currently alive
+
+    const removeEl = (entry) => {
+      entry.tween?.kill()
+      entry.el.remove()
+      const idx = activeEls.indexOf(entry)
+      if (idx !== -1) activeEls.splice(idx, 1)
+    }
+
+    const spawn = (x, y) => {
+      // Enforce the cap first so we never have more than MAX_TRAIL
+      // elements alive at once, no matter how fast the mouse moves.
+      while (activeEls.length >= MAX_TRAIL) {
+        removeEl(activeEls[0])
+      }
+
+      const direction = { x: 0, y: 0 }
+      if (lastPosition) {
+        direction.x = (x - lastPosition.x) > 0 ? 1 : -1
+        direction.y = (y - lastPosition.y) > 0 ? 1 : -1
+      }
+      lastPosition = { x, y }
+
+      const el = document.createElement('div')
+      el.className = 'cursor-image'
+      el.style.top    = `${y - IMAGE_HEIGHT / 2}px`
+      el.style.left   = `${x - IMAGE_WIDTH  / 2}px`
+      el.style.width  = `${IMAGE_WIDTH}px`
+      el.style.height = `${IMAGE_HEIGHT}px`
+      el.style.backgroundImage = `url(${images[imageIndex]})`
+      imageIndex = (imageIndex + 1) % images.length
+
+      document.body.appendChild(el)
+
+      gsap.set(el, {
+        scale: 0,
+        x: -130 * direction.x,
+        y: -70  * direction.y,
+        opacity: 0,
+      })
+
+      const entry = { el, tween: null }
+      activeEls.push(entry)
+
+      entry.tween = gsap.timeline({
+        onComplete: () => removeEl(entry),
+      })
+        .to(el, { opacity: 1, scale: 1, duration: 0.7, ease: 'power3.out' })
+        .to(el, { x: 0, y: 0, duration: 0.6, ease: 'power3.out' }, '<')
+        .to(el, { opacity: 0, scale: 0.3, duration: 0.4 }, '<+0.6')
+    }
 
     const handleMouseMove = (e) => {
       const x = e.clientX
@@ -424,47 +457,15 @@ const Hero = () => {
         Math.sqrt((x - lastPosition.x) ** 2 + (y - lastPosition.y) ** 2) < MIN_DISTANCE
       ) return
 
-      const direction = { x: 0, y: 0 }
-      if (lastPosition) {
-        direction.x = (x - lastPosition.x) > 0 ? 1 : -1
-        direction.y = (y - lastPosition.y) > 0 ? 1 : -1
-      }
-      lastPosition = { x, y }
-
-      const imageContainer = document.createElement('div')
-      imageContainer.className = 'cursor-image'
-      imageContainer.style.top    = `${y - IMAGE_HEIGHT / 2}px`
-      imageContainer.style.left   = `${x - IMAGE_WIDTH  / 2}px`
-      imageContainer.style.width  = `${IMAGE_WIDTH}px`
-      imageContainer.style.height = `${IMAGE_HEIGHT}px`
-
-      const img = document.createElement('img')
-      img.src           = images[imageIndex]
-      img.alt           = ''
-      img.className     = 'cursor-image__img'
-      imageIndex        = (imageIndex + 1) % images.length
-
-      imageContainer.appendChild(img)
-      document.body.appendChild(imageContainer)
-
-      gsap.set(imageContainer, {
-        scale: 0,
-        x: -130 * direction.x,
-        y: -70  * direction.y,
-        opacity: 0,
-      })
-
-      gsap.timeline()
-        .to(imageContainer, { opacity: 1, scale: 1, duration: 0.7, ease: 'power3.out' })
-        .to(imageContainer, { x: 0, y: 0, duration: 0.6, ease: 'power3.out' }, '<')
-        .to(imageContainer, {
-          opacity: 0, scale: 0.3, duration: 0.4,
-          onComplete: () => { document.body.removeChild(imageContainer) },
-        }, '<+0.6')
+      spawn(x, y)
     }
 
     hero.addEventListener('mousemove', handleMouseMove)
-    return () => hero.removeEventListener('mousemove', handleMouseMove)
+    return () => {
+      hero.removeEventListener('mousemove', handleMouseMove)
+      // Clean slate on unmount — nothing gets left behind.
+      activeEls.slice().forEach(removeEl)
+    }
   }, [])
 
   /* ── Build RPM Bars ── */
@@ -803,7 +804,7 @@ const Hero = () => {
           SECTION 2 — VIDEO BACKGROUND + TIMELINE
       ══════════════════════════════════════════ */}
         <section className="vs-section">
- 
+
       {/* Video */}
       <video
         className="vs-video"
@@ -813,17 +814,17 @@ const Hero = () => {
         loop
         playsInline
       />
- 
+
       {/* Overlay */}
       <div className="vs-overlay" />
- 
+
       {/* Content */}
       <div className="vs-content">
         <div className="tl-wrapper">
- 
+
           {/* LEFT — timeline */}
           <div className="tl-left">
- 
+
             <motion.div
               className="tl-header"
               initial={{ opacity: 0, y: 28 }}
@@ -835,7 +836,7 @@ const Hero = () => {
               <h2 className="tl-heading">The Road<span> So Far</span></h2>
               <p className="tl-subheading">Eight years. 14,974 kilometres. Every part of India — on two wheels.</p>
             </motion.div>
- 
+
             <div className="tl-track">
               <div className="tl-spine" />
               {tlData.map(({ year, route, desc, tags, active, delay }) => (
@@ -865,9 +866,9 @@ const Hero = () => {
                 </motion.div>
               ))}
             </div>
- 
+
           </div>{/* end tl-left */}
- 
+
           {/* RIGHT — episode card top + stats pinned to bottom */}
           <div className="tl-right">
 
@@ -955,10 +956,10 @@ const Hero = () => {
               ))}
             </motion.div>
           </div>{/* end tl-right */}
- 
+
         </div>
       </div>
- 
+
     </section>
     </>
   )

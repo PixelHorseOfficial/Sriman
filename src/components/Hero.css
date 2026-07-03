@@ -1,8 +1,51 @@
 /* ═══════════════════════════════════════════
+   GLOBAL RESET — kills the default browser
+   margin on <html>/<body> that was showing up
+   as white borders around every section, and
+   stops any element (canvas, horizontal-scroll
+   icon row, etc.) from pushing a horizontal
+   scrollbar that exposes white page background.
+═══════════════════════════════════════════ */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-width: 100%;
+  overflow-x: hidden;
+  background: #000;
+}
+
+html {
+  /* Always reserve the scrollbar's width, even on pages/moments
+     where content is momentarily shorter than the viewport.
+     Without this, anything that briefly changes document height
+     (like the cursor-trail images below) makes the scrollbar
+     pop in/out, which shifts the whole page horizontally. */
+  scrollbar-gutter: stable;
+  overflow-y: scroll;
+}
+
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* ═══════════════════════════════════════════
    HERO BASE
 ═══════════════════════════════════════════ */
 .hero {
-  min-height: 110vh;
+  /* was 110vh — the extra 10vh spilled past the
+     viewport and created a visible gap/seam before
+     the tyre-track section began */
+  min-height: 100vh;
+  width: 100%;
+  margin: 0;
   background-image: url('/images/final.gif');
   background-size: cover;
   background-position: center;
@@ -35,22 +78,45 @@
 
 /* ═══════════════════════════════════════════
    CURSOR IMAGE TRAIL
+   Fixed: the image is now painted as a CSS
+   background-image on this div itself instead
+   of via a child <img> tag. If a trail file
+   404s, a background-image just stays blank —
+   an <img> with a broken src instead renders
+   the browser's "broken image" glyph inside a
+   visibly outlined box, which is what caused
+   the wall of black squares with white borders
+   scattered across the page in the bug report.
+   The JS side also now hard-caps how many of
+   these can exist at once and force-cleans any
+   leftovers on unmount, so they can no longer
+   pile up faster than they fade out.
 ═══════════════════════════════════════════ */
-/* .cursor-image {
+.cursor-image {
+  /* MUST be position:fixed — this was previously commented out,
+     which left these elements at the browser default of
+     position:static. A static div is a normal block box that
+     gets inserted into the document's flow (Hero.jsx appends
+     each one to document.body), so every mousemove was briefly
+     growing the page's height/width and shifting the whole
+     layout sideways as the scrollbar popped in and out. Fixed
+     positioning removes it from flow entirely so it can never
+     affect page layout, no matter how many are on screen. */
   position: fixed;
+  top: 0;
+  left: 0;
   pointer-events: none;
   z-index: 10;
   will-change: transform, opacity;
   border-radius: 8px;
   overflow: hidden;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* No border, no background-color fallback — if the image path
+     is wrong this box is simply invisible instead of a glaring
+     black square. */
 }
-
-.cursor-image__img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 8px;
-} */
 
 /* ═══════════════════════════════════════════
    HERO CONTENT
@@ -401,62 +467,6 @@
 .cam-res { font-size: 8px; color: rgba(0,212,255,0.6); letter-spacing: 1px; }
 
 /* ═══════════════════════════════════════════
-   SOCIAL WIDGETS
-═══════════════════════════════════════════ */
-/* .w-social {
-  width: 70px;
-  height: 70px;
-  margin-bottom: 55px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  overflow: visible;
-  transition: box-shadow 0.4s ease, border-color 0.3s ease;
-}
-
-.w-social:hover { width: 64px; height: 80px; }
-
-.social-name {
-  font-size: 9px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.65);
-  letter-spacing: 0.5px;
-  text-align: center;
-  white-space: nowrap;
-  opacity: 1;
-  overflow: visible;
-}
-
-.social-glow {
-  position: absolute;
-  inset: 0;
-  border-radius: 16px;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.w-social:hover .social-glow { opacity: 1; }
-
-.yt-glow { background: radial-gradient(circle at center, rgba(255,0,0,0.18) 0%, transparent 70%); }
-.ig-glow { background: radial-gradient(circle at center, rgba(220,39,67,0.2) 0%, rgba(240,148,51,0.12) 60%, transparent 80%); }
-.x-glow  { background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 70%); }
-.fb-glow { background: radial-gradient(circle at center, rgba(24,119,242,0.2) 0%, transparent 70%); }
-
-.w-youtube:hover   { border-color: rgba(255,0,0,0.4) !important;      box-shadow: 0 0 30px rgba(255,0,0,0.2) !important; }
-.w-instagram:hover { border-color: rgba(220,39,67,0.4) !important;    box-shadow: 0 0 30px rgba(220,39,67,0.2) !important; }
-.w-twitter:hover   { border-color: rgba(255,255,255,0.25) !important; box-shadow: 0 0 30px rgba(255,255,255,0.1) !important; }
-.w-facebook:hover  { border-color: rgba(24,119,242,0.4) !important;   box-shadow: 0 0 30px rgba(24,119,242,0.2) !important; }
-
-.w-youtube   { bottom: 60px; left: 20px;   background: rgba(12,6,6,0.88); }
-.w-instagram { bottom: 60px; left: 104px;  background: rgba(12,6,8,0.88); }
-.w-twitter   { bottom: 60px; left: 188px;  background: rgba(10,10,12,0.88); }
-.w-facebook  { bottom: 60px; left: 272px;  background: rgba(6,8,14,0.88); } */
-
-/* ═══════════════════════════════════════════
    TRACK MAP
 ═══════════════════════════════════════════ */
 .w-track {
@@ -506,10 +516,6 @@
 .input-val { font-size: 11px; font-weight: 600; color: #fff; text-align: right; }
 
 /* ═══════════════════════════════════════════
-   SECTION 2 — VIDEO BACKGROUND
-═══════════════════════════════════════════ */
-
-/* ═══════════════════════════════════════════
    SHARED ANIMATIONS
 ═══════════════════════════════════════════ */
 @keyframes pulse {
@@ -528,6 +534,8 @@
   position: relative;
   width: 100%;
   height: 100vh;
+  margin: 0;
+  display: block;
   background:
     url('/images/tyre-track.png') center / cover no-repeat;
   overflow: hidden;
@@ -769,259 +777,6 @@
   100% { transform: translateY(-55px) scale(0); opacity: 0;   }
 }
 
-/* ── OLD s2-social-panel kept for reference — safe to delete ── */
-.s2-social-panel {
-  /* ── Layout & position ── */
-  --s2-panel-width:        560px;   /* width of the whole panel */
-  --s2-panel-height:       320px;   /* height of the panel */
-  --s2-panel-top:          60px;    /* distance from top of video-section */
-  --s2-panel-right:        80px;    /* distance from right of video-section */
-  --s2-panel-radius:       18px;    /* corner radius of panel */
-
-  /* ── Icon cards ── */
-  --s2-card-size:          82px;    /* width & height of each icon card */
-  --s2-card-radius:        18px;    /* corner radius of icon cards */
-  --s2-icon-size:          36px;    /* size of the SVG icon inside the card */
-  --s2-cards-gap:          22px;    /* gap between icon cards */
-
-  /* ── Typography ── */
-  --s2-label-size:         11px;    /* "YouTube / Instagram …" label */
-  --s2-handle-size:        9px;     /* handle text below icon */
-  --s2-follow-size:        11px;    /* "Follow the Rider" tag */
-  --s2-name-size:          36px;    /* creator name */
-  --s2-tagline-size:       11px;    /* "Moto Creator" footer tag */
-
-  /* ── Colours ── */
-  --s2-name-color:         #ffffff;
-  --s2-label-color:        #ff2020;
-  --s2-handle-color:       #aaaaaa;
-  --s2-divider-color:      #ff2020;
-  --s2-tagline-color:      #555555;
-
-  /* ─────────── DO NOT EDIT BELOW ─────────── */
-  position: absolute;
-  top:   var(--s2-panel-top);
-  right: var(--s2-panel-right);
-  width:  var(--s2-panel-width);
-  height: var(--s2-panel-height);
-  border-radius: var(--s2-panel-radius);
-  overflow: hidden;
-  z-index: 4;
-}
-
-/* Tyre-track background (your actual image) */
-.s2-social-bg {
-  position: absolute;
-  inset: 0;
-  background: url('/images/tyre-track.png') center / cover no-repeat;
-  z-index: 0;
-}
-
-/* Dark overlay so text stays readable over the grunge bg */
-.s2-social-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.42);
-  z-index: 1;
-}
-
-/* All content sits above the bg layers */
-.s2-social-content {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  padding: 24px 20px;
-}
-
-/* "Follow the Rider" micro-label */
-.s2-follow-label {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: var(--s2-follow-size);
-  letter-spacing: 8px;
-  color: var(--s2-label-color);
-  text-transform: uppercase;
-  opacity: 0.9;
-  margin: 0;
-}
-
-/* Creator name */
-.s2-creator-name {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: var(--s2-name-size);
-  letter-spacing: 6px;
-  color: var(--s2-name-color);
-  text-transform: uppercase;
-  text-shadow: 0 2px 20px rgba(0,0,0,0.8);
-  line-height: 1;
-  margin: 0;
-}
-
-/* Divider row */
-.s2-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  max-width: 380px;
-}
-.s2-divider-line {
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--s2-divider-color) 40%,
-    var(--s2-divider-color) 60%,
-    transparent
-  );
-  opacity: 0.5;
-}
-.s2-divider-diamond {
-  display: block;
-  width: 6px;
-  height: 6px;
-  background: var(--s2-divider-color);
-  transform: rotate(45deg);
-  flex-shrink: 0;
-}
-
-/* Icons row */
-.s2-icons-row {
-  display: flex;
-  gap: var(--s2-cards-gap);
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-/* Individual card */
-.s2-icon-card {
-  position: relative;
-  width: var(--s2-card-size);
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-.s2-icon-card:hover {
-  transform: translateY(-9px) scale(1.1);
-}
-
-/* Coloured icon background */
-.s2-icon-bg {
-  width: var(--s2-card-size);
-  height: var(--s2-card-size);
-  border-radius: var(--s2-card-radius);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  transition: filter 0.2s ease, box-shadow 0.2s ease;
-}
-.s2-icon-card:hover .s2-icon-bg { filter: brightness(1.18); }
-
-/* Per-platform colours */
-.s2-yt { background: #FF0000;   box-shadow: 0 4px 20px rgba(255,0,0,0.45); }
-.s2-ig {
-  background: radial-gradient(circle at 30% 110%,
-    #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-  box-shadow: 0 4px 20px rgba(220,39,67,0.45);
-}
-.s2-x  { background: #000000;   box-shadow: 0 4px 20px rgba(255,255,255,0.12); border: 1.5px solid #333; }
-.s2-fb { background: #1877F2;   box-shadow: 0 4px 20px rgba(24,119,242,0.45); }
-
-.s2-icon-card:hover .s2-yt { box-shadow: 0 8px 28px rgba(255,0,0,0.7); }
-.s2-icon-card:hover .s2-ig { box-shadow: 0 8px 28px rgba(220,39,67,0.7); }
-.s2-icon-card:hover .s2-x  { box-shadow: 0 8px 28px rgba(255,255,255,0.22); }
-.s2-icon-card:hover .s2-fb { box-shadow: 0 8px 28px rgba(24,119,242,0.7); }
-
-/* Corner bracket decorations (appear on hover) */
-.s2-corner {
-  position: absolute;
-  width: 8px; height: 8px;
-  border-color: #ffffff;
-  border-style: solid;
-  opacity: 0;
-  transition: all 0.2s ease;
-}
-.s2-corner--tl { top: 3px; left: 3px;     border-width: 2px 0 0 2px; border-radius: 2px 0 0 0; }
-.s2-corner--br { bottom: 3px; right: 3px;  border-width: 0 2px 2px 0; border-radius: 0 0 2px 0; }
-.s2-icon-card:hover .s2-corner { opacity: 1; width: 13px; height: 13px; }
-
-/* SVG icon */
-.s2-icon-svg {
-  width:  var(--s2-icon-size);
-  height: var(--s2-icon-size);
-  fill: #ffffff;
-  position: relative;
-  z-index: 2;
-  transition: transform 0.2s ease;
-}
-.s2-icon-card:hover .s2-icon-svg { transform: scale(1.1); }
-
-/* Platform name label */
-.s2-icon-label {
-  text-align: center;
-  color: rgba(255,255,255,0.75);
-  font-size: var(--s2-label-size);
-  letter-spacing: 1.5px;
-  margin-top: 7px;
-  font-family: 'Bebas Neue', sans-serif;
-  text-transform: uppercase;
-  transition: color 0.2s ease;
-}
-.s2-icon-card:hover .s2-icon-label { color: #ffffff; }
-
-/* Handle / username */
-.s2-icon-handle {
-  text-align: center;
-  color: var(--s2-handle-color);
-  font-size: var(--s2-handle-size);
-  letter-spacing: 0.5px;
-  font-family: sans-serif;
-  font-weight: 400;
-  margin-top: 2px;
-  text-transform: lowercase;
-}
-
-/* "Moto Creator" footer tag */
-.s2-tagline {
-  color: var(--s2-tagline-color);
-  font-size: var(--s2-tagline-size);
-  letter-spacing: 5px;
-  text-transform: uppercase;
-  font-family: 'Bebas Neue', sans-serif;
-  margin: 0;
-}
-
-/* Spark / particle burst on icon click */
-.s2-spark {
-  position: absolute;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  pointer-events: none;
-  animation: s2FloatUp 1.6s ease-out forwards;
-  opacity: 0;
-  z-index: 10;
-}
-@keyframes s2FloatUp {
-  0%   { transform: translateY(0) scale(1);    opacity: 0.9; }
-  100% { transform: translateY(-55px) scale(0); opacity: 0;   }
-}
-
-/* ═══════════════════════════════════════
-   VIDEO SECTION
-═══════════════════════════════════════ */
-
-/* ═══════════════════════════════════════
-   GOOGLE FONT — Barlow Condensed
-═══════════════════════════════════════ */
-
 /* ═══════════════════════════════════════
    GOOGLE FONT — Barlow Condensed
 ═══════════════════════════════════════ */
@@ -1043,9 +798,7 @@
   cursor: pointer;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
   flex-shrink: 0;
-
-   margin-top: 20px; 
- 
+  margin-top: 20px;
 }
 
 .ep-card:hover {
@@ -1060,7 +813,6 @@
   height: 192px;
   overflow: hidden;
   background: #000;
-  
 }
 
 /* YouTube iframe — fills the container and crops YouTube's UI chrome.
@@ -1076,7 +828,6 @@
   border: none;
   pointer-events: none;
   display: block;
-  
 }
 
 /* Mute / unmute button — bottom-left */
@@ -1218,6 +969,8 @@
   position: relative;
   width: 100%;
   min-height: 100vh;
+  margin: 0;
+  display: block;
   overflow: hidden;
   background: #000;
 }
@@ -1283,14 +1036,11 @@
   padding-left: 40px;
   padding-bottom: 35px;
   gap: 28px;
-
 }
 
 /* ═══════════════════════════════════════
    HEADER
 ═══════════════════════════════════════ */
-
-
 
 .tl-badge {
   display: inline-block;
@@ -1304,7 +1054,6 @@
   padding: 5px 14px;
   border-radius: 2px;
   margin-bottom: 0px;
-
 }
 
 .tl-heading {
@@ -1424,7 +1173,6 @@
   border-color: #ff0000 !important;
   box-shadow: 0 0 0 5px rgba(255, 69, 0, 0.22), 0 0 18px rgba(255, 69, 0, 0.35) !important;
 }
-
 
 .tl-body {
   flex: 1;
@@ -1591,7 +1339,6 @@
   }
 }
 
-
 /* ═══════════════════════════════════════════════════════════
    SECTION 1 RESPONSIVE — HUD DASHBOARD
    Desktop (>=1440px) / Laptop (1024–1439px): fluid absolute
@@ -1708,6 +1455,7 @@
     display: block;
     min-height: 100vh;
     padding: 0;
+    margin: 0;
   }
 
   .hero > div:first-child {
