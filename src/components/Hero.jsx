@@ -2,7 +2,42 @@ import React, { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import gsap from 'gsap'
 import './Hero.css'
+import Gallery from './Gallery'
 import Navbar from './Navbar'
+import About from './About'
+
+
+
+/* ── Count-up number — animates 0 → target with ease-out, once ── */
+const CountUpNumber = ({ target, suffix = '', decimals = 0, duration = 1.6, start }) => {
+  const [value, setValue] = useState(0)
+  const rafRef  = useRef(null)
+  const doneRef = useRef(false)
+
+  useEffect(() => {
+    if (!start || doneRef.current) return
+    doneRef.current = true
+
+    const startTime = performance.now()
+
+    const tick = (now) => {
+      const t = Math.min((now - startTime) / (duration * 1000), 1)
+      // ease-out-expo — fast start, gentle settle, matches the reference clip
+      const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t)
+      setValue(target * eased)
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick)
+      } else {
+        setValue(target)
+      }
+    }
+    rafRef.current = requestAnimationFrame(tick)
+
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [start, target, duration])
+
+  return <>{value.toFixed(decimals)}{suffix}</>
+}
 
 const Hero = () => {
   const heroRef        = useRef(null)
@@ -12,6 +47,10 @@ const Hero = () => {
   const [epMuted, setEpMuted] = useState(true)
   const epIframeRef = useRef(null)
   const YT_VIDEO_ID = 'wF__m76ExlE'
+  const [statsInView, setStatsInView] = useState(false)
+
+  /* ── vs-section video background ── */
+  const vsVideoRef = useRef(null)
 
   /* ── Sync mute/unmute to the YouTube iframe via postMessage ── */
   useEffect(() => {
@@ -361,23 +400,7 @@ const Hero = () => {
   }, [])
 
   /* ── Cursor Image Trail ──────────────────────────────────────
-     Fixed version: previously each mousemove could append an <img>
-     whose src (trail1-4.jpg) failed to resolve, which Chrome/Edge
-     render as a small "broken image" glyph inside a visible box —
-     that's the wall of black squares with white outlines in the
-     bug screenshot. On top of that, if GSAP's onComplete ever got
-     interrupted (fast movement, re-renders, route changes) the
-     element never got removed, so they piled up instead of fading.
-
-     Fix:
-       1. Use a CSS background-image on the div instead of an <img>
-          child — a 404 just stays blank, no broken-image glyph.
-       2. Track every live element in a ref array and hard-cap the
-          count (MAX_TRAIL) — once we hit the cap we immediately
-          kill + remove the oldest one instead of letting it queue.
-       3. On unmount, kill every in-flight tween and remove every
-          leftover element so nothing can ever survive past this
-          effect's lifetime.
+  
   ── */
   useEffect(() => {
     const hero = heroRef.current
@@ -406,8 +429,7 @@ const Hero = () => {
     }
 
     const spawn = (x, y) => {
-      // Enforce the cap first so we never have more than MAX_TRAIL
-      // elements alive at once, no matter how fast the mouse moves.
+    
       while (activeEls.length >= MAX_TRAIL) {
         removeEl(activeEls[0])
       }
@@ -545,6 +567,41 @@ const Hero = () => {
   const handleMouseLeave = (e) => { e.currentTarget.style.transform = '' }
   const tilt = { onMouseMove: handleMouseMove, onMouseLeave: handleMouseLeave }
 
+  /* ── "Get In Touch" flip-flap button — googly eyes track the cursor ── */
+  const ctaWrapRef = useRef(null)
+  const ctaEyeLRef = useRef(null)
+  const ctaEyeRRef = useRef(null)
+
+  const handleCtaMouseMove = (e) => {
+    const mx = e.clientX
+    const my = e.clientY
+    ;[ctaEyeLRef, ctaEyeRRef].forEach((ref) => {
+      const eyeEl = ref.current
+      if (!eyeEl) return
+      const pupil = eyeEl.querySelector('.ts-cta-pupil')
+      if (!pupil) return
+      const r = eyeEl.getBoundingClientRect()
+      const ex = r.left + r.width / 2
+      const ey = r.top + r.height / 2
+      const angle = Math.atan2(my - ey, mx - ex)
+      const dist = Math.min(Math.hypot(mx - ex, my - ey), 90)
+      const travel = r.width * 0.24 * (dist / 90)
+      const ox = Math.cos(angle) * travel
+      const oy = Math.sin(angle) * travel
+      pupil.style.transform = `translate(calc(-50% + ${ox}px), calc(-50% + ${oy}px))`
+    })
+  }
+  const handleCtaMouseLeave = () => {
+    [ctaEyeLRef, ctaEyeRRef].forEach((ref) => {
+      const pupil = ref.current?.querySelector('.ts-cta-pupil')
+      if (pupil) pupil.style.transform = 'translate(-50%, -50%)'
+    })
+  }
+  const handleCtaClick = (e) => {
+    s2Spark(e, '#ff2020')
+    document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   /* ── Section social spark burst (works for tyre-section icons) ── */
   const s2Spark = (e, color) => {
     const section = e.currentTarget.closest('.tyre-section')
@@ -617,6 +674,11 @@ const Hero = () => {
 
   return (
     <>
+      {/* ══════════════════════════════════════════
+      
+      ══════════════════════════════════════════ */}
+      <div className="hero-scene">
+
       {/* ══════════════════════════
           SECTION 1 — HERO / HUD
       ══════════════════════════ */}
@@ -711,107 +773,26 @@ const Hero = () => {
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════
-          SECTION 1.5 — TYRE TRACK BANNER
-      ══════════════════════════════════════════ */}
-      <section className="tyre-section">
-        <div className="tyre-overlay" />
+      {/* ================= ABOUT ================= */}
+      <About/>
 
-        <div className="ts-social">
-          <p className="ts-follow-label">Follow the Rider</p>
-          <h2 className="ts-creator-name">Sriman Kotaru</h2>
+      </div>{/* end .hero-scene */}
 
-          <div className="ts-divider">
-            <span className="ts-divider-line" />
-            <span className="ts-divider-diamond" />
-            <span className="ts-divider-line" />
-          </div>
-
-          <div className="ts-icons-row">
-
-            <div className="ts-icon-card" onClick={(e) => s2Spark(e,'#FF0000')} title="YouTube">
-              <div className="ts-icon-bg ts-yt">
-                <span className="ts-corner ts-corner--tl" />
-                <span className="ts-corner ts-corner--br" />
-                <svg className="ts-icon-svg" viewBox="0 0 24 24">
-                  <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31.2 31.2 0 0 0 0 12a31.2 31.2 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31.2 31.2 0 0 0 24 12a31.2 31.2 0 0 0-.5-5.8zM9.8 15.6V8.4L15.8 12l-6 3.6z"/>
-                </svg>
-              </div>
-              <div className="ts-icon-label">YouTube</div>
-              <div className="ts-icon-handle">SrimanKotaru</div>
-            </div>
-
-            <div className="ts-icon-card" onClick={(e) => s2Spark(e,'#E1306C')} title="Instagram">
-              <div className="ts-icon-bg ts-ig">
-                <span className="ts-corner ts-corner--tl" />
-                <span className="ts-corner ts-corner--br" />
-                <svg className="ts-icon-svg" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
-                </svg>
-              </div>
-              <div className="ts-icon-label">Instagram</div>
-              <div className="ts-icon-handle">@srimankotaru</div>
-            </div>
-
-            <div className="ts-icon-card" onClick={(e) => s2Spark(e,'#ffffff')} title="X / Twitter">
-              <div className="ts-icon-bg ts-x">
-                <span className="ts-corner ts-corner--tl" />
-                <span className="ts-corner ts-corner--br" />
-                <svg className="ts-icon-svg" viewBox="0 0 24 24">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.26 5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                </svg>
-              </div>
-              <div className="ts-icon-label">X / Twitter</div>
-              <div className="ts-icon-handle">@srimankotaru</div>
-            </div>
-
-            <div className="ts-icon-card" onClick={(e) => s2Spark(e,'#1877F2')} title="Facebook">
-              <div className="ts-icon-bg ts-fb">
-                <span className="ts-corner ts-corner--tl" />
-                <span className="ts-corner ts-corner--br" />
-                <svg className="ts-icon-svg" viewBox="0 0 24 24">
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-              </div>
-              <div className="ts-icon-label">Facebook</div>
-              <div className="ts-icon-handle">@srimankotaru</div>
-            </div>
-
-            <div className="ts-icon-card" onClick={(e) => s2Spark(e,'#000000')} title="Threads">
-              <div className="ts-icon-bg ts-threads">
-                <span className="ts-corner ts-corner--tl" />
-                <span className="ts-corner ts-corner--br" />
-                <svg className="ts-icon-svg" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.589 12c.027 3.086.718 5.496 2.057 7.164 1.43 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.964-.065-1.19.408-2.285 1.33-3.082.88-.76 2.119-1.207 3.583-1.29a13.495 13.495 0 0 1 3.02.142c-.126-.742-.375-1.332-.75-1.757-.513-.583-1.317-.88-2.39-.887h-.048c-.832 0-1.888.202-2.59 1.171l-1.6-1.283c.926-1.292 2.385-2.004 4.185-2.016h.062c1.615.012 2.949.524 3.862 1.48 1.038 1.087 1.532 2.68 1.47 4.736.678.45 1.27 1.01 1.753 1.65 1.027 1.401 1.233 3.468.492 5.467-.81 2.162-2.59 3.647-5.034 4.193-.698.157-1.427.24-2.188.247zm-1.08-10.697c-.786.045-1.428.28-1.845.673-.337.31-.51.71-.483 1.12.058 1.047 1.214 1.56 2.334 1.498 1.168-.063 2.026-.464 2.553-1.19.44-.594.682-1.44.72-2.518a11.403 11.403 0 0 0-2.735-.155l-.544.572z"/>
-                </svg>
-              </div>
-              <div className="ts-icon-label">Threads</div>
-              <div className="ts-icon-handle">@srimankotaru</div>
-            </div>
-          </div>
-
-          <div className="ts-divider">
-            <span className="ts-divider-line" />
-            <span className="ts-divider-diamond" />
-            <span className="ts-divider-line" />
-          </div>
-
-          <p className="ts-tagline">Moto Creator</p>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════
+     
+       {/* ══════════════════════════════════════════
           SECTION 2 — VIDEO BACKGROUND + TIMELINE
       ══════════════════════════════════════════ */}
         <section className="vs-section">
+        <div className="vs-sticky">
 
-      {/* Video */}
+      {/* Video background — bike-video.mp4, autoplay, looped, muted */}
       <video
+        ref={vsVideoRef}
         className="vs-video"
         src="/images/bike-video.mp4"
         autoPlay
-        muted
         loop
+        muted
         playsInline
       />
 
@@ -941,16 +922,25 @@ const Hero = () => {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.4 }}
+              onViewportEnter={() => setStatsInView(true)}
               transition={{ type: 'spring', stiffness: 70, damping: 16, delay: 0.55 }}
             >
               {[
-                { num: '15K',  lbl: 'total km' },
-                { num: '8',    lbl: 'years riding' },
-                { num: '1.3K', lbl: 'Videos' },
-                { num: '525K', lbl: 'subscribers' },
-              ].map(({ num, lbl }) => (
+                { target: 15,  suffix: 'K', decimals: 0, lbl: 'total km' },
+                { target: 8,   suffix: '',  decimals: 0, lbl: 'years riding' },
+                { target: 1.3, suffix: 'K', decimals: 1, lbl: 'Videos' },
+                { target: 525, suffix: 'K', decimals: 0, lbl: 'subscribers' },
+              ].map(({ target, suffix, decimals, lbl }, i) => (
                 <div className="tl-stat" key={lbl}>
-                  <span className="tl-stat-num">{num}</span>
+                  <span className="tl-stat-num">
+                    <CountUpNumber
+                      target={target}
+                      suffix={suffix}
+                      decimals={decimals}
+                      duration={1.4 + i * 0.15}
+                      start={statsInView}
+                    />
+                  </span>
                   <span className="tl-stat-lbl">{lbl}</span>
                 </div>
               ))}
@@ -960,7 +950,106 @@ const Hero = () => {
         </div>
       </div>
 
+        </div>{/* end vs-sticky */}
+        
     </section>
+      
+          <Gallery />
+
+     
+
+
+    {/* ══════════════════════════════════════════
+          SECTION 1.5 — TYRE TRACK BANNER
+      ══════════════════════════════════════════ */}
+      <section className="tyre-section">
+        <div className="tyre-overlay" />
+
+        <div className="ts-social">
+          <p className="ts-follow-label">Follow the Rider</p>
+          <h2 className="ts-creator-name">Sriman Kotaru</h2>
+
+          <div className="ts-divider">
+            <span className="ts-divider-line" />
+            <span className="ts-divider-diamond" />
+            <span className="ts-divider-line" />
+          </div>
+
+          <div className="ts-icons-row">
+
+            <div className="ts-icon-card" onClick={(e) => s2Spark(e,'#FF0000')} title="YouTube">
+              <div className="ts-icon-bg ts-yt">
+                <span className="ts-corner ts-corner--tl" />
+                <span className="ts-corner ts-corner--br" />
+                <svg className="ts-icon-svg" viewBox="0 0 24 24">
+                  <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31.2 31.2 0 0 0 0 12a31.2 31.2 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31.2 31.2 0 0 0 24 12a31.2 31.2 0 0 0-.5-5.8zM9.8 15.6V8.4L15.8 12l-6 3.6z"/>
+                </svg>
+              </div>
+              <div className="ts-icon-label">YouTube</div>
+              <div className="ts-icon-handle">SrimanKotaru</div>
+            </div>
+
+            <div className="ts-icon-card" onClick={(e) => s2Spark(e,'#E1306C')} title="Instagram">
+              <div className="ts-icon-bg ts-ig">
+                <span className="ts-corner ts-corner--tl" />
+                <span className="ts-corner ts-corner--br" />
+                <svg className="ts-icon-svg" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+                </svg>
+              </div>
+              <div className="ts-icon-label">Instagram</div>
+              <div className="ts-icon-handle">@srimankotaru</div>
+            </div>
+
+            <div className="ts-icon-card" onClick={(e) => s2Spark(e,'#ffffff')} title="X / Twitter">
+              <div className="ts-icon-bg ts-x">
+                <span className="ts-corner ts-corner--tl" />
+                <span className="ts-corner ts-corner--br" />
+                <svg className="ts-icon-svg" viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.26 5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+              </div>
+              <div className="ts-icon-label">X / Twitter</div>
+              <div className="ts-icon-handle">@srimankotaru</div>
+            </div>
+
+            <div className="ts-icon-card" onClick={(e) => s2Spark(e,'#1877F2')} title="Facebook">
+              <div className="ts-icon-bg ts-fb">
+                <span className="ts-corner ts-corner--tl" />
+                <span className="ts-corner ts-corner--br" />
+                <svg className="ts-icon-svg" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                </svg>
+              </div>
+              <div className="ts-icon-label">Facebook</div>
+              <div className="ts-icon-handle">@srimankotaru</div>
+            </div>
+
+            <div className="ts-icon-card" onClick={(e) => s2Spark(e,'#000000')} title="Threads">
+              <div className="ts-icon-bg ts-threads">
+                <span className="ts-corner ts-corner--tl" />
+                <span className="ts-corner ts-corner--br" />
+                <svg className="ts-icon-svg" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.04.569c-1.104-3.96-3.898-5.984-8.304-6.015-2.91.022-5.11.936-6.54 2.717C4.307 6.504 3.616 8.914 3.589 12c.027 3.086.718 5.496 2.057 7.164 1.43 1.783 3.631 2.698 6.54 2.717 2.623-.02 4.358-.631 5.8-2.045 1.647-1.613 1.618-3.593 1.09-4.798-.31-.71-.873-1.3-1.634-1.75-.192 1.352-.622 2.446-1.284 3.272-.886 1.102-2.14 1.704-3.73 1.79-1.202.065-2.361-.218-3.259-.801-1.063-.689-1.685-1.74-1.752-2.964-.065-1.19.408-2.285 1.33-3.082.88-.76 2.119-1.207 3.583-1.29a13.495 13.495 0 0 1 3.02.142c-.126-.742-.375-1.332-.75-1.757-.513-.583-1.317-.88-2.39-.887h-.048c-.832 0-1.888.202-2.59 1.171l-1.6-1.283c.926-1.292 2.385-2.004 4.185-2.016h.062c1.615.012 2.949.524 3.862 1.48 1.038 1.087 1.532 2.68 1.47 4.736.678.45 1.27 1.01 1.753 1.65 1.027 1.401 1.233 3.468.492 5.467-.81 2.162-2.59 3.647-5.034 4.193-.698.157-1.427.24-2.188.247zm-1.08-10.697c-.786.045-1.428.28-1.845.673-.337.31-.51.71-.483 1.12.058 1.047 1.214 1.56 2.334 1.498 1.168-.063 2.026-.464 2.553-1.19.44-.594.682-1.44.72-2.518a11.403 11.403 0 0 0-2.735-.155l-.544.572z"/>
+                </svg>
+              </div>
+              <div className="ts-icon-label">Threads</div>
+              <div className="ts-icon-handle">@srimankotaru</div>
+            </div>
+          </div>
+
+       
+
+          <div className="ts-divider">
+            <span className="ts-divider-line" />
+            <span className="ts-divider-diamond" />
+            <span className="ts-divider-line" />
+          </div>
+
+          <p className="ts-tagline">Moto Creator</p>
+        </div>
+      </section>
+       
     </>
   )
 }

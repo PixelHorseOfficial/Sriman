@@ -1,11 +1,6 @@
-/* ═══════════════════════════════════════════
-   GLOBAL RESET — kills the default browser
-   margin on <html>/<body> that was showing up
-   as white borders around every section, and
-   stops any element (canvas, horizontal-scroll
-   icon row, etc.) from pushing a horizontal
-   scrollbar that exposes white page background.
-═══════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -15,16 +10,13 @@ html, body {
   padding: 0;
   width: 100%;
   min-width: 100%;
-  overflow-x: hidden;
+
+  overflow-x: clip;
   background: #000;
 }
 
 html {
-  /* Always reserve the scrollbar's width, even on pages/moments
-     where content is momentarily shorter than the viewport.
-     Without this, anything that briefly changes document height
-     (like the cursor-trail images below) makes the scrollbar
-     pop in/out, which shifts the whole page horizontally. */
+
   scrollbar-gutter: stable;
   overflow-y: scroll;
 }
@@ -33,7 +25,12 @@ html {
   margin: 0;
   padding: 0;
   width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+
+.hero-scene {
+  position: relative;
 }
 
 /* ═══════════════════════════════════════════
@@ -44,23 +41,20 @@ html {
      viewport and created a visible gap/seam before
      the tyre-track section began */
   min-height: 100vh;
+  height: 100vh;
   width: 100%;
   margin: 0;
   background-image: url('/images/final.gif');
   background-size: cover;
   background-position: center;
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+
   overflow: hidden;
 }
 
-/* blob-canvas removed — using CSS clip-path circle only */
 
-/* ═══════════════════════════════════════════
-   MASK REVEAL LAYER — WebGL fluid canvas
-   Sits on top of the hero bg, renders the
-   back image revealed via liquid simulation.
-   Sized/positioned from JS (ResizeObserver).
-═══════════════════════════════════════════ */
 .mask-reveal-layer {
   position: absolute;
   top: 0;
@@ -76,32 +70,9 @@ html {
 
 /* cursor: none removed — no canvas crosshair */
 
-/* ═══════════════════════════════════════════
-   CURSOR IMAGE TRAIL
-   Fixed: the image is now painted as a CSS
-   background-image on this div itself instead
-   of via a child <img> tag. If a trail file
-   404s, a background-image just stays blank —
-   an <img> with a broken src instead renders
-   the browser's "broken image" glyph inside a
-   visibly outlined box, which is what caused
-   the wall of black squares with white borders
-   scattered across the page in the bug report.
-   The JS side also now hard-caps how many of
-   these can exist at once and force-cleans any
-   leftovers on unmount, so they can no longer
-   pile up faster than they fade out.
-═══════════════════════════════════════════ */
+
 .cursor-image {
-  /* MUST be position:fixed — this was previously commented out,
-     which left these elements at the browser default of
-     position:static. A static div is a normal block box that
-     gets inserted into the document's flow (Hero.jsx appends
-     each one to document.body), so every mousemove was briefly
-     growing the page's height/width and shifting the whole
-     layout sideways as the scrollbar popped in and out. Fixed
-     positioning removes it from flow entirely so it can never
-     affect page layout, no matter how many are on screen. */
+ 
   position: fixed;
   top: 0;
   left: 0;
@@ -113,9 +84,7 @@ html {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  /* No border, no background-color fallback — if the image path
-     is wrong this box is simply invisible instead of a glaring
-     black square. */
+  
 }
 
 /* ═══════════════════════════════════════════
@@ -252,7 +221,7 @@ html {
   margin-top: 2px;
 }
 
-.speed-tag { font-size: 9px; color: #ff4500; letter-spacing: 1px; font-weight: 600; }
+.speed-tag { font-size: 9px; color: #ff0000; letter-spacing: 1px; font-weight: 600; }
 
 /* ═══════════════════════════════════════════
    LAP TIMER
@@ -281,7 +250,7 @@ html {
 .lap-dot {
   width: 6px;
   height: 6px;
-  background: #ff4500;
+  background: #ff0000;
   border-radius: 50%;
   animation: pulse 1.4s infinite;
 }
@@ -359,14 +328,14 @@ html {
 .gear-num {
   font-size: 44px;
   font-weight: 800;
-  color: #ff4500;
+  color: #ff0000;
   line-height: 1;
   letter-spacing: -2px;
 }
 
 .gear-label {
   font-size: 8px;
-  color: rgba(255,100,50,0.6);
+  color: rgb(243, 7, 7);
   letter-spacing: 2px;
   text-transform: uppercase;
 }
@@ -397,95 +366,7 @@ html {
 
 .gforce-meter { position: relative; width: 80px; height: 80px; }
 
-.gforce-val { font-size: 14px; font-weight: 700; color: #00d4ff; letter-spacing: -0.5px; }
-
-/* ═══════════════════════════════════════════
-   SESSION
-═══════════════════════════════════════════ */
-.w-session {
-  background: rgba(0,10,20,0.85);
-  border-color: rgba(0,150,255,0.15) !important;
-  width: 140px;
-  height: 80px;
-  top: 0px;
-  right: 20px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.sess-top { display: flex; justify-content: space-between; align-items: center; }
-.sess-title { font-size: 9px; color: rgba(255,255,255,0.3); letter-spacing: 1.5px; text-transform: uppercase; }
-.sess-count { font-size: 22px; font-weight: 700; color: #00aaff; letter-spacing: -1px; }
-.sess-sub { font-size: 8px; color: rgba(0,150,255,0.5); letter-spacing: 1px; }
-
-/* ═══════════════════════════════════════════
-   CAM WIDGET
-═══════════════════════════════════════════ */
-.w-cam {
-  background: rgba(6,6,10,0.92);
-  width: 200px;
-  height: 120px;
-  bottom: 150px;
-  left: 20px;
-  overflow: hidden;
-  border-radius: 14px;
-}
-
-.cam-inner {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #0d1520 0%, #0a0e15 100%);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 10px 12px;
-  position: relative;
-  overflow: hidden;
-}
-
-.cam-scan {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: rgba(0,212,255,0.4);
-  animation: scan 3s linear infinite;
-}
-
-@keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
-
-.cam-top { display: flex; justify-content: space-between; align-items: center; }
-.cam-rec { display: flex; align-items: center; gap: 5px; }
-.rec-dot { width: 5px; height: 5px; background: #ff0000; border-radius: 50%; animation: pulse 1s infinite; }
-.rec-text { font-size: 8px; color: rgba(255,255,255,0.5); letter-spacing: 1px; }
-.cam-time { font-size: 9px; color: rgba(255,255,255,0.3); font-variant-numeric: tabular-nums; }
-.cam-crosshair { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-.cam-bottom { display: flex; justify-content: space-between; align-items: flex-end; }
-.cam-label { font-size: 9px; color: rgba(255,255,255,0.3); letter-spacing: 1.5px; text-transform: uppercase; }
-.cam-res { font-size: 8px; color: rgba(0,212,255,0.6); letter-spacing: 1px; }
-
-/* ═══════════════════════════════════════════
-   TRACK MAP
-═══════════════════════════════════════════ */
-.w-track {
-  background: rgba(8,8,14,0.88);
-  width: 150px;
-  height: 150px;
-  bottom: 200px;
-  right: 1680px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.track-title { font-size: 9px; color: rgba(255,255,255,0.3); letter-spacing: 2px; text-transform: uppercase; }
-.track-svg { flex: 1; }
-.track-footer { display: flex; justify-content: space-between; }
-.track-pos { font-size: 8px; color: rgba(255,60,0,0.7); }
-.track-sector { font-size: 8px; color: rgba(255,255,255,0.2); }
+.gforce-val { font-size: 14px; font-weight: 700; color: #ff0000; letter-spacing: -0.5px; }
 
 /* ═══════════════════════════════════════════
    THROTTLE / BRAKE / LEAN / TRACTION
@@ -493,9 +374,9 @@ html {
 .w-inputs {
   background: rgba(8,10,16,0.88);
   width: clamp(230px, 18.2vw, 350px);
-  height: clamp(140px, 8.3vw, 160px);
-  bottom: clamp(120px, 12vw, 230px);
-  left: clamp(14px, 3.6vw, 70px);
+  height: clamp(200px, 8.3vw, 160px);
+  bottom: 150px;
+  left: 21px;
   padding: 14px 12px;
   display: flex;
   flex-direction: column;
@@ -521,6 +402,33 @@ html {
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.35; }
+}
+
+
+.tyre-section {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  display: block;
+  background:
+    url('/images/tyre-track.png') center / cover no-repeat;
+  overflow: hidden;
+}
+
+/* Subtle dark vignette on edges so it flows
+   smoothly from the black hero above */
+.tyre-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom,
+      rgba(0,0,0,0.55) 0%,
+      transparent       18%,
+      transparent       82%,
+      rgba(0,0,0,0.65) 100%
+    );
+  pointer-events: none;
 }
 
 /* ═══════════════════════════════════════════
@@ -777,11 +685,8 @@ html {
   100% { transform: translateY(-55px) scale(0); opacity: 0;   }
 }
 
-/* ═══════════════════════════════════════
-   GOOGLE FONT — Barlow Condensed
-═══════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
 
 /* ═══════════════════════════════════════
    EPISODE CARD (Section 3 top-right)
@@ -815,9 +720,7 @@ html {
   background: #000;
 }
 
-/* YouTube iframe — fills the container and crops YouTube's UI chrome.
-   Top offset hides the title bar, extra height hides the bottom controls.
-   pointer-events:none keeps it purely decorative (no accidental tab-outs). */
+
 .ep-iframe {
   position: absolute;
   top: -60px;          /* crop YouTube title bar at the top            */
@@ -968,11 +871,19 @@ html {
 .vs-section {
   position: relative;
   width: 100%;
-  min-height: 100vh;
+ 
+  min-height: 110vh;
   margin: 0;
   display: block;
-  overflow: hidden;
   background: #000;
+}
+
+.vs-sticky {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .vs-video {
@@ -980,11 +891,11 @@ html {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center;
+  display: block;
   z-index: 0;
   pointer-events: none;
   opacity: 0.7;
+  object-fit: cover;
 }
 
 .vs-overlay {
@@ -1003,9 +914,10 @@ html {
   position: relative;
   z-index: 2;
   width: 100%;
-  min-height: 100vh;
+  height: 100%;
   display: flex;
   align-items: center;
+  overflow-y: auto;
 }
 
 /* ═══════════════════════════════════════
@@ -1127,18 +1039,20 @@ html {
 }
 
 .tl-year-col {
-  width: 52px;
+  width: auto;
+  min-width: 40px;
   flex-shrink: 0;
   padding-top: 3px;
 }
 
 .tl-year {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 22px;
+  font-size: clamp(14px, 4.2vw, 22px);
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   color: rgba(255, 255, 255, 0.35);
   text-transform: uppercase;
+  white-space: nowrap;
   transition: color 0.3s ease;
 }
 
@@ -1285,6 +1199,7 @@ html {
   line-height: 1;
   letter-spacing: 0.02em;
   margin-bottom: 6px;
+  font-variant-numeric: tabular-nums;
 }
 
 .tl-stat-lbl {
@@ -1295,6 +1210,7 @@ html {
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.45);
 }
+
 
 /* ═══════════════════════════════════════
    RESPONSIVE
@@ -1321,6 +1237,22 @@ html {
   .tl-stat { flex: 1; padding: 22px 16px; }
 
   .vs-overlay { background: rgba(0, 0, 0, 0.80); }
+
+
+  .vs-section { min-height: 0; }
+
+  .vs-sticky {
+    position: static;
+    height: auto;
+    overflow: visible;
+  }
+
+  .vs-content {
+    height: auto;
+    overflow-y: visible;
+    align-items: flex-start;
+    padding: 0;
+  }
 }
 
 @media (max-width: 560px) {
@@ -1339,17 +1271,6 @@ html {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   SECTION 1 RESPONSIVE — HUD DASHBOARD
-   Desktop (>=1440px) / Laptop (1024–1439px): fluid absolute
-   dashboard using the clamp()/% values set above.
-   Tablet & Mobile (<=1023px): the HUD drops out of absolute
-   positioning into a real CSS Grid — a tidy 2x2 block of the
-   round/square gauges (speed, lap, gear, g-force) with the
-   two wide bar widgets (rpm, inputs) spanning full width.
-   This replaces the old "everything full-width and stacked"
-   layout, which looked oversized and disorganized on phones.
-═══════════════════════════════════════════════════════════ */
 @media (max-width: 1023px) {
   .hero {
     min-height: auto;
@@ -1383,8 +1304,6 @@ html {
     -webkit-backdrop-filter: blur(12px);
   }
 
-  /* square gauges → 2 per row, lighter glass so the animated
-     background stays visible around and behind each card */
   .w-speed, .w-lap, .w-gear, .w-gforce {
     width: 100%;
     height: auto;
@@ -1440,14 +1359,7 @@ html {
   .w-speed, .w-lap, .w-gear, .w-gforce { max-width: 128px; }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   MOBILE ONLY — HIDE HUD WIDGETS
-   On phones the dashboard cards were still crowding the
-   screen and covering the animated liquid-reveal background.
-   Below 767px we drop the HUD entirely so the hero background
-   effect is the full, unobstructed focus — tablet (768–1023px)
-   keeps the 2x2 widget grid from above untouched.
-═══════════════════════════════════════════════════════════ */
+
 @media (max-width: 767px) {
   .hud-widget { display: none; }
 
@@ -1471,14 +1383,7 @@ html {
   }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   TYRE SECTION — SOCIALS ALWAYS IN ONE LINE
-   All 5 platform icons (YouTube, Instagram, X, Facebook,
-   Threads) must stay on a single row at every screen size.
-   Icons/gaps/typography shrink fluidly; on the very smallest
-   phones the row becomes a smooth horizontal scroller instead
-   of wrapping, so the single-line layout never breaks.
-═══════════════════════════════════════════════════════════ */
+
 .ts-icons-row {
   flex-wrap: nowrap;
   width: 100%;
@@ -1486,9 +1391,7 @@ html {
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  /* extra room on every side so the hover lift+scale on
-     .ts-icon-card (translateY(-10px) scale(1.12)) has space
-     to render without being clipped by overflow-y: hidden */
+ 
   padding: 16px 10px 8px;
 }
 .ts-icons-row::-webkit-scrollbar { display: none; }
@@ -1557,4 +1460,21 @@ html {
   .ep-iframe { height: 290px; }
   .tl-stat-num { font-size: 36px; }
   .tl-stat { padding: 16px 10px; }
+
+  /* ── tl-left: keep year/dot/body from crowding on phones ── */
+  .tl-year-col { min-width: 34px; padding-top: 2px; }
+  .tl-dot-col { width: 18px; padding-top: 5px; }
+  .tl-dot { width: 9px; height: 9px; }
+  .tl-body { padding-left: 12px; }
+  .tl-route { font-size: 18px; }
+  .tl-desc { font-size: 14px; }
+  .tl-spine { left: 52px; }
+}
+
+@media (max-width: 360px) {
+  .tl-year-col { min-width: 30px; }
+  .tl-year { letter-spacing: 0.02em; }
+  .tl-dot-col { width: 14px; }
+  .tl-body { padding-left: 9px; }
+  .tl-spine { left: 46px; }
 }
