@@ -16,7 +16,7 @@ const GALLERY_ITEMS = [
   {
     id: 1,
     name: "Ladakh",
-    thumbnail: "public/images/gallery-image2.jpeg",
+    thumbnail: "/images/gallery-image2.jpeg",
     fallbackVideo:
       "/images/gallery-video2.mp4",
     videoId: "",
@@ -37,7 +37,7 @@ const GALLERY_ITEMS = [
   {
     id: 3,
     name: "HYD -- GOA",
-    thumbnail: "public/images/gallery-image3.jpeg",
+    thumbnail: "/images/gallery-image3.jpeg",
     fallbackVideo: "/images/gallery-video3.mp4",
     videoId: "",
     description:
@@ -46,7 +46,7 @@ const GALLERY_ITEMS = [
   {
     id: 4,
     name: "India to China Border on a Motorcycle ",
-    thumbnail: "public/images/gallery-image4.jpeg",
+    thumbnail: "/images/gallery-image4.jpeg",
     fallbackVideo: "/images/gallery-video4.mp4",
     videoId: "",
     description:
@@ -55,7 +55,7 @@ const GALLERY_ITEMS = [
   {
     id: 5,
     name: "HYD -- PUNE",
-    thumbnail: "public/images/gallery-image5.jpeg",
+    thumbnail: "/images/gallery-image5.jpeg",
     fallbackVideo: "/images/gallery-video5.mp4",
     videoId: "",
     description:

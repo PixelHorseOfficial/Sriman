@@ -1478,3 +1478,8 @@ html {
   .tl-body { padding-left: 9px; }
   .tl-spine { left: 46px; }
 }
+
+.ts-social a {
+  text-decoration: none;
+  color: inherit;
+}
